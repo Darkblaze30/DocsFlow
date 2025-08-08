@@ -1,0 +1,48 @@
+# Ignorar archivos de entorno
+.env
+
+# Ignorar dependencias de Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignorar entornos virtuales
+venv/
+env/
+.venv/
+
+# Ignorar archivos de logs y temporales
+logs/
+*.log
+temp_files/
+
+# Ignorar archivos de dependencias si se usan en local
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Ignorar configuraciones de IDE
+.vscode/
+
+# Archivos temporales y stash
+*~Stashed*
+*.tmp
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Testing and coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+codeforlater.py
