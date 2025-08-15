@@ -1,12 +1,12 @@
 from fastapi import APIRouter, Request, Depends, Form, Response
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
-from utils.db_operations import fetch_all
-from controllers.userControllers import register_user, authenticate_user, create_access_token, get_current_user
+from app.utils.db_operations import fetch_all
+from app.controllers.userControllers import register_user, authenticate_user, create_access_token, get_current_user
 from datetime import timedelta
-from controllers.userControllers import get_current_admin_user
+from app.controllers.userControllers import get_current_admin_user
 
-router = APIRouter()
+auth_router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
 
 
@@ -17,10 +17,9 @@ def _get_departments_list():
     except Exception:
         return []
 
-
-@router.get("/register")
+@auth_router.get("/register")
 def register_page(request: Request, current_admin=Depends(get_current_admin_user)):
-    from models.userModels import RoleEnum
+    from app.models.userModels import RoleEnum
     roles = [role.value for role in RoleEnum]
     departments = _get_departments_list()
     return templates.TemplateResponse("register.html", {
@@ -30,7 +29,7 @@ def register_page(request: Request, current_admin=Depends(get_current_admin_user
     })
 
 
-@router.post("/register")
+@auth_router.post("/register")
 def register(
     request: Request,
     name: str = Form(...),
@@ -56,12 +55,12 @@ def register(
     return RedirectResponse("/login", status_code=303)
 
 
-@router.get("/login")
+@auth_router.get("/login")
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
 
-@router.post("/login")
+@auth_router.post("/login")
 def login(response: Response, request: Request, email: str = Form(...), password: str = Form(...)):
     user = authenticate_user(email, password)
     if not user:
@@ -73,23 +72,23 @@ def login(response: Response, request: Request, email: str = Form(...), password
     return response
 
 
-@router.get("/dashboard")
+@auth_router.get("/dashboard")
 def dashboard(request: Request, current_user=Depends(get_current_user)):
     return templates.TemplateResponse("dashboard.html", {"request": request, "user": current_user})
 
 
-@router.get("/logout")
+@auth_router.get("/logout")
 def logout(response: Response):
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie("access_token")
     return response
 
-@router.get("/users")
+@auth_router.get("/users")
 def users_list(request: Request, current_admin=Depends(get_current_admin_user)):
     # Mostrar lista de todos los usuarios (solo admins)
     pass
 
-@router.get("/departments") 
+@auth_router.get("/departments") 
 def departments_list(request: Request, current_admin=Depends(get_current_admin_user)):
     # Gestionar departamentos (solo admins)
     pass

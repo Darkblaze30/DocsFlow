@@ -1,9 +1,10 @@
 from fastapi import FastAPI
-from routes.userRouters import router as auth_router
+from app.routes.userRouters import auth_router
 from fastapi.staticfiles import StaticFiles
-from utils.db_operations import execute
-from utils.db_connection import close_pool
-import models.userModels as models_module
+from app.utils.db_operations import execute
+from app.utils.db_connection import close_pool
+import app.models.userModels as models_module
+from app.routes.document_route import router as document_router
 
 app = FastAPI()
 
@@ -20,6 +21,8 @@ def startup():
     except Exception as e:
         print("❌ No se pudieron ejecutar los DDLs de creación de tablas. Revisa la conexión a la BD:", e)
 app.include_router(auth_router)
+app.include_router(document_router, prefix="/api/documents")
+
 app.mount("/styles", StaticFiles(directory="app/styles"), name="styles")
 
 @app.on_event("shutdown")

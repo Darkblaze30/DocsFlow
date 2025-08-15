@@ -51,4 +51,25 @@ def get_create_table_statements() -> list:
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     """.strip())
 
+    stmts.append(f"""
+CREATE TABLE IF NOT EXISTS documents (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    filename VARCHAR(255),
+    uploaded_by INT,
+    department VARCHAR(100),
+    upload_date DATETIME
+);
+
+""")
+    
+    stmts.append(f"""
+    CREATE TABLE IF NOT EXISTS extracted_tables (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      document_id INT,
+      page_number INT,
+      description VARCHAR(255),
+      table_data TEXT, -- JSON string
+      FOREIGN KEY (document_id) REFERENCES documents(id)
+    );
+""")
     return stmts

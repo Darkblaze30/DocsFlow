@@ -4,8 +4,8 @@ from jose import jwt, JWTError
 from datetime import datetime, timedelta
 import os
 
-from utils.db_operations import fetch_one, fetch_all, execute
-import models.userModels as userModels
+from app.utils.db_operations import fetch_one, fetch_all, execute
+import app.models.userModels as userModels
 
 SECRET_KEY = os.getenv("SECRET_KEY", "supersecretkey_change_me")
 ALGORITHM = "HS256"
