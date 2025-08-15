@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro</title>
+    <link rel="stylesheet" href="../styles/styles.css">
+</head>
+<body class="auth-page">
+    <div class="card">
+    <h2>Crear cuenta</h2>
+
+    {% if error %}
+        <div class="error">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" action="/register">
+        <input name="name" placeholder="Nombre completo" required value="{{ form.name if form and form.name }}">
+        <input name="email" placeholder="Correo electrónico" type="email" required value="{{ form.email if form and form.email }}">
+        <input name="password" placeholder="Contraseña" type="password" required>
+
+        <!-- Datalist / autocomplete para ciudad -->
+        <input list="departments-list" name="department_name" id="department_name" placeholder="Escribe el nombre del departamento" value="{{ form.department_name if form and form.department_name }}">
+
+        <datalist id="departments-list">
+            {% for d in departments %}
+            <option value="{{ d.name }}"></option>
+            {% endfor %}
+        </datalist>
+        <select name="rol" id="rol" required>
+        {% for r in roles %}
+            <option value="{{ r }}">{{ r|capitalize }}</option>
+        {% endfor %}
+        </select>
+
+        <button type="submit">Registrar</button>
+    </form>
+
+    <p style="margin-top:10px">¿Ya tienes cuenta? <a href="/login">Entrar</a></p>
+    </div>
+</body>
+</html>
