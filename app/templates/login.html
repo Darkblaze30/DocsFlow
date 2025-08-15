@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="../styles/styles.css"
+</head>
+<body class="auth-page">
+        <div class="card">
+        <h2>Iniciar sesión</h2>
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/login">
+            <input name="email" placeholder="Correo electrónico" type="email" required />
+            <input name="password" placeholder="Contraseña" type="password" required />
+            <button type="submit">Entrar</button>
+        </form>
+        <p>¿Olvidaste la contraseña? <a href="/password">Click aquí</a></p>
+        </div>
+    </body>
+</html>
