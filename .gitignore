@@ -46,3 +46,10 @@ Thumbs.db
 htmlcov/
 
 codeforlater.py
+
+node_modules
+package-lock.json
+dist
+dist-ssr
+*.local
+tsconfig.tsbuildinfo
