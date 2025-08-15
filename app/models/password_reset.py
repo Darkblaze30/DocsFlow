@@ -13,4 +13,4 @@ class User(BaseModel):
     id: int
     email: str
     password: Optional[str] = None
-    role: str
+    rol: str

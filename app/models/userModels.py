@@ -72,4 +72,14 @@ CREATE TABLE IF NOT EXISTS documents (
       FOREIGN KEY (document_id) REFERENCES documents(id)
     );
 """)
+    
+    stmts.append(f"""
+    CREATE TABLE IF NOT EXISTS password_resets (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id BIGINT NOT NULL,
+        token_hash VARCHAR(255) NOT NULL UNIQUE,
+        expires_at DATETIME NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+""")
     return stmts

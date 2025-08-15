@@ -1,5 +1,5 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Query
-from app.utils.database import get_db
+from app.utils.db_operations import get_db
 from app.utils.pdf_processor import extract_tables
 from app.utils.file_utils import save_pdf
 import json
