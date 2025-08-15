@@ -4,11 +4,12 @@ from app.utils.pdf_processor import extract_tables
 from app.utils.file_utils import save_pdf
 import json
 
-router = APIRouter()
+router = APIRouter(tags=['Documents'])
 
 def get_current_user():
     return {"id": 1, "department": "Finanzas"}  # Simulado
 
+# 🧍 Obtener el usuario autenticado
 @router.post("/upload")
 def upload_document(file: UploadFile = File(...), user=Depends(get_current_user)):
     if file.content_type != "application/pdf":

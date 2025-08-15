@@ -6,10 +6,7 @@ import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 
-#def get_user_by_email(email: str) -> Optional[User]:
- #   query = "SELECT id, email, password, role FROM users WHERE email = %s"
-  #  user_data = execute_query(query, (email,), fetch_one=True)
-   # return User(**user_data) if user_data else None
+
 def get_user_by_email(email: str) -> Optional[User]:
     """Busca un usuario por su email en la base de datos, incluyendo su rol."""
     # Corrige la consulta SELECT para que incluya la columna 'role'
@@ -46,21 +43,6 @@ async def forgot_password_handler(request: PasswordResetRequest):
 
     return {"message": "Si el correo electrónico existe, se ha enviado un enlace para restablecer la contraseña."}
 
-#async def reset_password_handler(request: PasswordResetConfirm):
- #   token_record = get_reset_token_record(request.token)
-    
-  #  if not token_record or token_record['expires_at'] < datetime.now():
-   #     return {"message": "Token inválido o expirado. Por favor, solicita uno nuevo."}
-
-    #if request.new_password != request.confirm_password:
-     #   return {"message": "Las contraseñas no coinciden."}
-        
-    #new_password_hash = bcrypt.hashpw(request.new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-    
-   # update_user_password(token_record['user_id'], new_password_hash)
-    #delete_reset_token_record(token_record['token_hash'])
-
-#    return {"message": "Contraseña actualizada con éxito."}
 
 
 async def forgot_password_handler(request: PasswordResetRequest):
