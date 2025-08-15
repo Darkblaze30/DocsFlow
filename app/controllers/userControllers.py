@@ -13,6 +13,8 @@ ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
+revoked_tokens = set()
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -28,6 +30,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
+
+def revoke_token(token: str):
+    revoked_tokens.add(token)
+
+def is_token_revoked(token: str) -> bool:
+    return token in revoked_tokens
 
 def get_user_by_email(email: str):
     sql = f"SELECT * FROM `{userModels.TABLE_USERS}` WHERE `{userModels.USER_COL_EMAIL}` = %s LIMIT 1"
@@ -80,6 +88,9 @@ def get_current_user(request: Request):
     token = request.cookies.get("access_token")
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    if is_token_revoked(token):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token has been revoked")
 
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])

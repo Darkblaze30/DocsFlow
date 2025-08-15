@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Depends, Form, Response
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.utils.db_operations import fetch_all
-from app.controllers.userControllers import register_user, authenticate_user, create_access_token, get_current_user
+from app.controllers.userControllers import register_user, authenticate_user, create_access_token, get_current_user, revoke_token
 from datetime import timedelta
 from app.controllers.userControllers import get_current_admin_user
 
@@ -17,16 +17,23 @@ def _get_departments_list():
     except Exception:
         return []
 
+def _set_security_headers(response: Response):
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 @auth_router.get("/register")
 def register_page(request: Request, current_admin=Depends(get_current_admin_user)):
     from app.models.userModels import RoleEnum
     roles = [role.value for role in RoleEnum]
     departments = _get_departments_list()
-    return templates.TemplateResponse("register.html", {
+    response = templates.TemplateResponse("register.html", {
         "request": request,
         "roles": roles,
         "departments": departments
     })
+    return _set_security_headers(response)
 
 
 @auth_router.post("/register")
@@ -45,13 +52,14 @@ def register(
         from app.models.userModels import RoleEnum
         roles = [role.value for role in RoleEnum]
         departments = _get_departments_list()
-        return templates.TemplateResponse("register.html", {
+        response = templates.TemplateResponse("register.html", {
             "request": request,
             "error": str(e),
             "roles": roles,
             "departments": departments,
             "form": {"name": name, "email": email, "department_name": department_name}
         })
+        return _set_security_headers(response)
     return RedirectResponse("/login", status_code=303)
 
 
@@ -65,30 +73,56 @@ def login(response: Response, request: Request, email: str = Form(...), password
     user = authenticate_user(email, password)
     if not user:
         return templates.TemplateResponse("login.html", {"request": request, "error": "Credenciales inválidas"})
+    
     access_token_expires = timedelta(minutes=60 * 24)
     access_token = create_access_token(data={"sub": str(user["id"])}, expires_delta=access_token_expires)
+    
     response = RedirectResponse("/dashboard", status_code=303)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, samesite="lax")
+    response.set_cookie(
+        key="access_token", 
+        value=access_token, 
+        httponly=False, 
+        samesite="lax",
+        secure=False, 
+        max_age=60*60*24  
+    )
     return response
 
 
 @auth_router.get("/dashboard")
 def dashboard(request: Request, current_user=Depends(get_current_user)):
-    return templates.TemplateResponse("dashboard.html", {"request": request, "user": current_user})
+    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": current_user})
+    return _set_security_headers(response)
 
 
 @auth_router.get("/logout")
-def logout(response: Response):
+def logout(request: Request, response: Response):
+    token = request.cookies.get("access_token")
+    if token:
+        revoke_token(token)
+    
     response = RedirectResponse("/login", status_code=303)
-    response.delete_cookie("access_token")
+    
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        domain=None,
+        samesite="lax"
+    )
+    
+    response.headers["Clear-Site-Data"] = '"cache", "storage"'
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    
     return response
 
 @auth_router.get("/users")
 def users_list(request: Request, current_admin=Depends(get_current_admin_user)):
-    # Mostrar lista de todos los usuarios (solo admins)
-    pass
+    response = templates.TemplateResponse("users.html", {"request": request})
+    return _set_security_headers(response)
 
 @auth_router.get("/departments") 
 def departments_list(request: Request, current_admin=Depends(get_current_admin_user)):
-    # Gestionar departamentos (solo admins)
-    pass
+    response = templates.TemplateResponse("departments.html", {"request": request})
+    return _set_security_headers(response)
