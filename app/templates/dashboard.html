@@ -3,12 +3,14 @@
     <head>
         <meta charset="utf-8" />
         <title>Dashboard</title>
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+        <meta http-equiv="Pragma" content="no-cache">
+        <meta http-equiv="Expires" content="0">
         <link rel="stylesheet" href="../styles/dashboardCSS.css">
     </head>
     <body>
         <div class="box">
             <h1>Bienvenido, {{ user.name }} 🌟</h1>
-            
             <div class="user-info">
                 <p><strong>Correo:</strong> {{ user.email }}</p>
                 <p><strong>Rol:</strong> 
@@ -18,7 +20,7 @@
                 </p>
             </div>
             <div class="actions">
-                <a href="/logout">Cerrar sesión</a>
+                <a href="#" onclick="logout()" id="logout-btn">Cerrar sesión</a>
             </div>
 
             {% if user.rol == 'admin' %}
@@ -32,5 +34,156 @@
             </div>
             {% endif %}
         </div>
+
+        <div id="inactivityModal" class="inactivity-modal">
+            <div class="inactivity-content">
+                <h2>⏰ Sesión por Expirar</h2>
+                <p>Has estado inactivo por mucho tiempo.</p>
+                <p>Tu sesión expirará en:</p>
+                <div id="countdown" class="countdown">02:00</div>
+                <p><small>¿Deseas continuar trabajando?</small></p>
+                <div class="modal-buttons">
+                    <button class="btn-extend" onclick="extendSession()">Continuar Sesión</button>
+                    <button class="btn-logout" onclick="performLogout()">Cerrar Sesión</button>
+                </div>
+            </div>
+        </div>
+ 
+        <script>
+            let isLoggingOut = false;
+            let inactivityTimer;
+            let warningTimer;
+            let countdownTimer;
+            let countdownSeconds = 120  ; // 2 minutos de advertencia
+            
+            const INACTIVITY_TIME = 28 * 60 * 1000; // 28 minutos (para mostrar aviso a los 28)
+            const WARNING_TIME = 2 * 60 * 1000;    // 2 minutos de advertencia
+            const TOTAL_SESSION_TIME = 30 * 60 * 1000; // 30 minutos total
+
+            const activityEvents = [
+                'mousedown', 'mousemove', 'keypress', 'scroll', 
+                'touchstart', 'click', 'keydown'
+            ];
+
+            function resetInactivityTimer() {
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+                clearInterval(countdownTimer);
+                
+                document.getElementById('inactivityModal').style.display = 'none';
+                
+                countdownSeconds = 120;
+                
+                inactivityTimer = setTimeout(() => {
+                    showInactivityWarning();
+                }, INACTIVITY_TIME);
+            }
+
+            function showInactivityWarning() {
+                document.getElementById('inactivityModal').style.display = 'block';
+                
+                countdownSeconds = 120;
+                updateCountdown();
+                countdownTimer = setInterval(updateCountdown, 1000);
+                
+                warningTimer = setTimeout(() => {
+                    performLogout(true); 
+                }, WARNING_TIME);
+            }
+
+            function updateCountdown() {
+                const minutes = Math.floor(countdownSeconds / 60);
+                const seconds = countdownSeconds % 60;
+                const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                document.getElementById('countdown').textContent = display;
+                
+                if (countdownSeconds <= 0) {
+                    performLogout(true);
+                    return;
+                }
+                
+                countdownSeconds--;
+            }
+
+            function extendSession() {
+                document.getElementById('inactivityModal').style.display = 'none';
+                clearTimeout(warningTimer);
+                clearInterval(countdownTimer);
+                resetInactivityTimer();
+                
+            }
+
+            function setupActivityListeners() {
+                activityEvents.forEach(event => {
+                    document.addEventListener(event, resetInactivityTimer, true);
+                });
+            }
+
+            function logout() {
+                if (isLoggingOut) return;
+                
+                const confirmLogout = confirm('¿Estás seguro de que deseas cerrar sesión?');
+                if (confirmLogout) {
+                    performLogout();
+                }
+            }
+
+            function performLogout(isAutomatic = false) {
+                if (isLoggingOut) return;
+                
+                isLoggingOut = true;
+                
+                clearTimeout(inactivityTimer);
+                clearTimeout(warningTimer);
+                clearInterval(countdownTimer);
+                
+                activityEvents.forEach(event => {
+                    document.removeEventListener(event, resetInactivityTimer, true);
+                });
+
+                const logoutBtn = document.getElementById('logout-btn');
+                if (logoutBtn) {
+                    logoutBtn.style.pointerEvents = 'none';
+                    logoutBtn.textContent = isAutomatic ? 'Sesión expirada...' : 'Cerrando sesión...';
+                }
+                if (typeof(Storage) !== "undefined") {
+                    localStorage.clear();
+                    sessionStorage.clear();
+                }
+
+                if (isAutomatic) {
+                    alert('Tu sesión ha expirado por inactividad. Serás redirigido al login.');
+                }
+                window.location.replace('/logout');
+            }
+
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    window.location.reload();
+                }
+            });
+
+            window.addEventListener('load', function() {
+                setupActivityListeners();
+                resetInactivityTimer();
+            });
+
+            window.addEventListener('beforeunload', function(event) {
+                if (!isLoggingOut) {
+                    event.preventDefault();
+                    return event.returnValue = '¿Estás seguro de que deseas salir?';
+                }
+            });
+
+            window.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape') {
+                    const modal = document.getElementById('inactivityModal');
+                    if (modal.style.display === 'block') {
+                        extendSession();
+                    }
+                }
+            });
+        </script>
     </body>
 </html>
