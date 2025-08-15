@@ -10,7 +10,7 @@ DB_USER = os.getenv("DB_USER", "root")
 DB_PASS = os.getenv("DB_PASS", "password")
 DB_HOST = os.getenv("DB_HOST", "127.0.0.1")
 DB_PORT = int(os.getenv("DB_PORT", "3306"))
-DB_NAME = os.getenv("DB_NAME", "login_db")
+DB_NAME = os.getenv("DB_NAME", "docsflow")
 POOL_NAME = os.getenv("DB_POOL_NAME", "app_pool")
 POOL_SIZE = int(os.getenv("DB_POOL_SIZE", "5"))
 

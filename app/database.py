@@ -16,8 +16,8 @@ def get_db_connection():
         conn = mysql.connector.connect(
             host=os.getenv("DB_HOST"),
             user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_DATABASE"),
+            password=os.getenv("DB_PASS"),
+            database=os.getenv("DB_NAME"),
             # Timeout de conexión de 5 segundos para evitar que se cuelgue
             connect_timeout=5 
         )
