@@ -1,16 +1,31 @@
 from fastapi import FastAPI
-# from app.auth.controller import router as auth_router
-from app.routes.example_route import router as example_router
+from routes.userRouters import router as auth_router
+from fastapi.staticfiles import StaticFiles
+from utils.db_operations import execute
+from utils.db_connection import close_pool
+import models.userModels as models_module
 
 app = FastAPI()
 
-# app.include_router(auth_router, prefix="/api/auth")
-app.include_router(example_router, prefix="/api")
+@app.on_event("startup")
+def startup():
+    print("🚀 Startup: asegurando tablas (dev)...")
+    try:
+        for sql in models_module.get_create_table_statements():
+            try:
+                execute(sql)
+            except Exception as e:
+                print("⚠️ Aviso creando tabla:", e)
+        print("✅ Intento de creación de tablas completado.")
+    except Exception as e:
+        print("❌ No se pudieron ejecutar los DDLs de creación de tablas. Revisa la conexión a la BD:", e)
+app.include_router(auth_router)
+app.mount("/styles", StaticFiles(directory="app/styles"), name="styles")
 
-@app.get("/")
-def health_check():
-    return {"status": "ok"}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
+@app.on_event("shutdown")
+def shutdown():
+    try:
+        close_pool()
+        print("🧹 Pool de conexiones cerrado correctamente.")
+    except Exception:
+        pass
