@@ -4,39 +4,244 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registro</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="stylesheet" href="../styles/styles.css">
 </head>
 <body class="auth-page">
     <div class="card">
-    <h2>Crear cuenta</h2>
-
-    {% if error %}
-        <div class="error">{{ error }}</div>
-    {% endif %}
-
-    <form method="post" action="/register">
-        <input name="name" placeholder="Nombre completo" required value="{{ form.name if form and form.name }}">
-        <input name="email" placeholder="Correo electrónico" type="email" required value="{{ form.email if form and form.email }}">
-        <input name="password" placeholder="Contraseña" type="password" required>
-
-        <!-- Datalist / autocomplete para ciudad -->
-        <input list="departments-list" name="department_name" id="department_name" placeholder="Escribe el nombre del departamento" value="{{ form.department_name if form and form.department_name }}">
-
-        <datalist id="departments-list">
-            {% for d in departments %}
-            <option value="{{ d.name }}"></option>
-            {% endfor %}
-        </datalist>
-        <select name="rol" id="rol" required>
-        {% for r in roles %}
-            <option value="{{ r }}">{{ r|capitalize }}</option>
-        {% endfor %}
-        </select>
-
-        <button type="submit">Registrar</button>
-    </form>
-
-    <p style="margin-top:10px">¿Ya tienes cuenta? <a href="/login">Entrar</a></p>
+        <h2>Crear cuenta</h2>
+        
+        <div id="loadingMessage" style="text-align: center; color: #666;">
+            Verificando permisos...
+        </div>
+        
+        <div id="registerForm" style="display: none;">
+            <div id="errorMessage" class="error" style="display: none;"></div>
+            
+            <form id="mainForm">
+                <input id="name" name="name" placeholder="Nombre completo" required>
+                <input id="email" name="email" placeholder="Correo electrónico" type="email" required>
+                <input id="password" name="password" placeholder="Contraseña" type="password" required>
+                
+                <input list="departments-list" name="department_name" id="department_name" placeholder="Escribe el nombre del departamento">
+                <datalist id="departments-list">
+                </datalist>
+                
+                <select name="rol" id="rol" required>
+                </select>
+                
+                <button type="submit" id="submitBtn">Registrar</button>
+            </form>
+            
+            <p style="margin-top:10px">
+                <a href="/dashboard">← Volver al Dashboard</a>
+            </p>
+        </div>
+        
+        <div id="accessDenied" style="display: none; text-align: center;">
+            <h3 style="color: #d32f2f;">Acceso Denegado</h3>
+            <p>No tienes permisos para acceder a esta página.</p>
+            <p>Solo los administradores pueden registrar nuevos usuarios.</p>
+            <a href="/dashboard">← Volver al Dashboard</a>
+        </div>
     </div>
+
+    <script>
+        function checkAuthentication() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                return false;
+            }
+            
+            const parts = token.split('.');
+            if (parts.length !== 3) {
+                return false;
+            }
+            
+            return true;
+        }
+
+        function makeAuthenticatedRequest(url, options = {}) {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                return Promise.reject('No token');
+            }
+            
+            const authOptions = {
+                ...options,
+                headers: {
+                    ...options.headers,
+                    'Authorization': `Bearer ${token}`
+                }
+            };
+            
+            return fetch(url, authOptions).then(response => {
+                if (response.status === 401) {
+                    localStorage.removeItem('access_token');
+                    setTimeout(() => {
+                        window.location.replace('/login');
+                    }, 2000);
+                    throw new Error('Unauthorized');
+                }
+                return response;
+            });
+        }
+
+        async function loadFormData() {
+            try {
+                const authResponse = await makeAuthenticatedRequest('/verify-auth');
+                
+                if (!authResponse.ok) {
+                    throw new Error('Authentication failed');
+                }
+                
+                const userData = await authResponse.json();
+                
+                if (!userData.user || userData.user.rol !== 'admin') {
+                    showAccessDenied();
+                    return;
+                }
+                
+                await loadDepartmentsAndRoles();
+                
+                showForm();
+                
+            } catch (error) {
+                console.error('Error loading form data:', error);
+                
+                try {
+                    const pageResponse = await makeAuthenticatedRequest('/register');
+                    if (pageResponse.ok) {
+                        const contentType = pageResponse.headers.get('content-type');
+                        if (contentType && contentType.includes('text/html')) {
+                            window.location.reload();
+                            return;
+                        }
+                    }
+                } catch (fallbackError) {
+                    console.error('Fallback failed:', fallbackError);
+                }
+                
+                showAccessDenied();
+            }
+        }
+
+        async function loadDepartmentsAndRoles() {
+            
+            const departments = [
+                { name: "Tecnología" },
+                { name: "Recursos Humanos" },
+                { name: "Ventas" },
+                { name: "Marketing" },
+                { name: "Administración" }
+            ];
+            
+            const roles = ["admin", "user", "manager"];
+            
+            const departmentsList = document.getElementById('departments-list');
+            departmentsList.innerHTML = '';
+            departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept.name;
+                departmentsList.appendChild(option);
+            });
+            
+            const rolesSelect = document.getElementById('rol');
+            rolesSelect.innerHTML = '';
+            roles.forEach(role => {
+                const option = document.createElement('option');
+                option.value = role;
+                option.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+                rolesSelect.appendChild(option);
+            });
+        }
+
+        function showForm() {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('registerForm').style.display = 'block';
+        }
+
+        function showAccessDenied() {
+            document.getElementById('loadingMessage').style.display = 'none';
+            document.getElementById('accessDenied').style.display = 'block';
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        async function handleFormSubmit(event) {
+            event.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Registrando...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('name', document.getElementById('name').value);
+                formData.append('email', document.getElementById('email').value);
+                formData.append('password', document.getElementById('password').value);
+                formData.append('department_name', document.getElementById('department_name').value);
+                formData.append('rol', document.getElementById('rol').value);
+                
+                const response = await makeAuthenticatedRequest('/register', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    alert('Usuario registrado exitosamente');
+                    
+                    document.getElementById('mainForm').reset();
+                } else {
+                    const errorText = await response.text();
+                    showError(errorText || 'Error al registrar usuario');
+                }
+                
+            } catch (error) {
+                console.error('Error submitting form:', error);
+                showError('Error de conexión. Por favor intenta nuevamente.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        }
+
+        window.addEventListener('load', async function() {
+            if (!checkAuthentication()) {
+                setTimeout(() => {
+                    window.location.replace('/login');
+                }, 2000);
+                return;
+            }
+            
+            await loadFormData();
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('mainForm');
+            if (form) {
+                form.addEventListener('submit', handleFormSubmit);
+            }
+        });
+
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) {
+                window.location.reload();
+            }
+        });
+    </script>
 </body>
 </html>
