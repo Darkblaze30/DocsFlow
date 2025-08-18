@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends, Form, Response
+from fastapi import APIRouter, Request, Depends, Form, Response, HTTPException
 from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 from app.utils.db_operations import fetch_all
@@ -24,14 +24,32 @@ def _set_security_headers(response: Response):
     return response
 
 @auth_router.get("/register")
-def register_page(request: Request, current_admin=Depends(get_current_admin_user)):
+def register_page(request: Request):
+    user_data = None
+    try:
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            current_user = get_current_user(request)
+            user_data = current_user
+    except HTTPException:
+        pass
+    
+    if not user_data or user_data.get("rol") != "admin":
+        user_data = {
+            "name": "Sin acceso",
+            "email": "...",
+            "rol": "user"
+        }
+    
     from app.models.userModels import RoleEnum
     roles = [role.value for role in RoleEnum]
     departments = _get_departments_list()
+    
     response = templates.TemplateResponse("register.html", {
         "request": request,
         "roles": roles,
-        "departments": departments
+        "departments": departments,
+        "user": user_data
     })
     return _set_security_headers(response)
 
@@ -72,50 +90,51 @@ def login_page(request: Request):
 def login(response: Response, request: Request, email: str = Form(...), password: str = Form(...)):
     user = authenticate_user(email, password)
     if not user:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Credenciales inválidas"})
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     access_token_expires = timedelta(minutes=60 * 24)
     access_token = create_access_token(data={"sub": str(user["id"])}, expires_delta=access_token_expires)
     
-    response = RedirectResponse("/dashboard", status_code=303)
-    response.set_cookie(
-        key="access_token", 
-        value=access_token, 
-        httponly=False, 
-        samesite="lax",
-        secure=False, 
-        max_age=60*60*24  
-    )
-    return response
+    return {
+        "access_token": access_token, 
+        "token_type": "bearer", 
+        "redirect_url": "/dashboard"
+        }
 
 
 @auth_router.get("/dashboard")
-def dashboard(request: Request, current_user=Depends(get_current_user)):
-    response = templates.TemplateResponse("dashboard.html", {"request": request, "user": current_user})
+def dashboard(request: Request):
+    user_data = None
+    try:
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            current_user = get_current_user(request)
+            user_data = current_user
+    except HTTPException:
+        pass
+    
+    if not user_data:
+        user_data = {
+            "name": "Cargando...",
+            "email": "...",
+            "rol": "user"
+        }
+    
+    response = templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "user": user_data
+    })
     return _set_security_headers(response)
 
 
 @auth_router.get("/logout")
 def logout(request: Request, response: Response):
-    token = request.cookies.get("access_token")
+    authorization = request.headers.get("Authorization")
+    token = authorization.replace("Bearer ", "") if authorization and authorization.startswith("Bearer ") else None
     if token:
         revoke_token(token)
     
-    response = RedirectResponse("/login", status_code=303)
-    
-    response.delete_cookie(
-        key="access_token",
-        path="/",
-        domain=None,
-        samesite="lax"
-    )
-    
-    response.headers["Clear-Site-Data"] = '"cache", "storage"'
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    
-    return response
+    return {"message": "Logged out successfully", "redirect_url": "/login"}
 
 @auth_router.get("/users")
 def users_list(request: Request, current_admin=Depends(get_current_admin_user)):
@@ -126,3 +145,16 @@ def users_list(request: Request, current_admin=Depends(get_current_admin_user)):
 def departments_list(request: Request, current_admin=Depends(get_current_admin_user)):
     response = templates.TemplateResponse("departments.html", {"request": request})
     return _set_security_headers(response)
+
+
+@auth_router.get("/verify-auth")
+def verify_auth(current_user=Depends(get_current_user)):
+    return {
+        "authenticated": True, 
+        "user": {
+            "id": current_user["id"],
+            "name": current_user["name"], 
+            "email": current_user["email"],
+            "rol": current_user["rol"]
+        }
+    }

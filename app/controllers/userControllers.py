@@ -85,7 +85,8 @@ def authenticate_user(email: str, password: str):
     return user
 
 def get_current_user(request: Request):
-    token = request.cookies.get("access_token")
+    authorization = request.headers.get("Authorization")
+    token = authorization.replace("Bearer ", "") if authorization and authorization.startswith("Bearer ") else None
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
 

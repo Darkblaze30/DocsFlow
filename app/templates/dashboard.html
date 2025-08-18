@@ -10,12 +10,12 @@
     </head>
     <body>
         <div class="box">
-            <h1>Bienvenido, {{ user.name }} 🌟</h1>
+            <h1 id="welcomeMsg">Bienvenido, <span id="userName">{{ user.name if user else 'Cargando...' }}</span> 🌟</h1>
             <div class="user-info">
-                <p><strong>Correo:</strong> {{ user.email }}</p>
+                <p><strong>Correo:</strong> <span id="userEmail">{{ user.email if user else '...' }}</span></p>
                 <p><strong>Rol:</strong> 
-                    <span class="role-badge role-{{ user.rol }}">
-                        {{ user.rol.upper() }}
+                    <span class="role-badge role-{{ user.rol if user else 'user' }}" id="userRoleSpan">
+                        <span id="userRoleText">{{ (user.rol|upper) if user else '...' }}</span>
                     </span>
                 </p>
             </div>
@@ -23,8 +23,7 @@
                 <a href="#" onclick="logout()" id="logout-btn">Cerrar sesión</a>
             </div>
 
-            {% if user.rol == 'admin' %}
-            <div class="admin-only">
+            <div id="adminPanel" class="{% if user and user.rol == 'admin' %}admin-visible{% else %}admin-hidden{% endif %}">
                 <h3>🔧 Panel de Administrador</h3>
                 <div class="actions">
                     <a href="/register">👤 Registrar Usuarios</a>
@@ -32,10 +31,9 @@
                     <a href="/departments">🏢 Gestionar Departamentos</a>
                 </div>
             </div>
-            {% endif %}
         </div>
 
-        <div id="inactivityModal" class="inactivity-modal">
+        <div id="inactivityModal" class="inactivity-modal" style="display: none;">
             <div class="inactivity-content">
                 <h2>⏰ Sesión por Expirar</h2>
                 <p>Has estado inactivo por mucho tiempo.</p>
@@ -54,16 +52,88 @@
             let inactivityTimer;
             let warningTimer;
             let countdownTimer;
-            let countdownSeconds = 120  ; // 2 minutos de advertencia
+            let countdownSeconds = 120;
             
-            const INACTIVITY_TIME = 28 * 60 * 1000; // 28 minutos (para mostrar aviso a los 28)
-            const WARNING_TIME = 2 * 60 * 1000;    // 2 minutos de advertencia
-            const TOTAL_SESSION_TIME = 30 * 60 * 1000; // 30 minutos total
+            const INACTIVITY_TIME = 28 * 60 * 1000;
+            const WARNING_TIME = 2 * 60 * 1000;
+            const TOTAL_SESSION_TIME = 30 * 60 * 1000;
 
             const activityEvents = [
                 'mousedown', 'mousemove', 'keypress', 'scroll', 
                 'touchstart', 'click', 'keydown'
             ];
+
+            function checkAuthentication() {
+                const token = localStorage.getItem('access_token');
+                
+                if (!token) {
+                    return false;
+                }
+                
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    return false;
+                }
+                
+                return true;
+            }
+
+            function makeAuthenticatedRequest(url, options = {}) {
+                const token = localStorage.getItem('access_token');
+                if (!token) {
+                    return Promise.reject('No token');
+                }
+                
+                const authOptions = {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'Authorization': `Bearer ${token}`
+                    }
+                };
+                
+                return fetch(url, authOptions).then(response => {
+                    if (response.status === 401) {
+                        localStorage.removeItem('access_token');
+                        setTimeout(() => {
+                            window.location.replace('/login');
+                        }, 3000);
+                        throw new Error('Unauthorized');
+                    }
+                    return response;
+                });
+            }
+
+            function updateUserInfo(userData) {
+                if (userData && userData.user) {
+                    const user = userData.user;
+                    
+                    const userNameElement = document.getElementById('userName');
+                    if (userNameElement) {
+                        userNameElement.textContent = user.name || 'Sin nombre';
+                    }
+                    
+                    const userEmailElement = document.getElementById('userEmail');
+                    if (userEmailElement) {
+                        userEmailElement.textContent = user.email || 'Sin email';
+                    }
+                    
+                    const roleTextElement = document.getElementById('userRoleText');
+                    const roleSpanElement = document.getElementById('userRoleSpan');
+                    if (roleTextElement && roleSpanElement) {
+                        roleTextElement.textContent = (user.rol || 'user').toUpperCase();
+                        roleSpanElement.className = `role-badge role-${user.rol || 'user'}`;
+                    }
+                    const adminPanel = document.getElementById('adminPanel');
+                    if (adminPanel) {
+                        if (user.rol === 'admin') {
+                            adminPanel.style.display = 'block';
+                        } else {
+                            adminPanel.style.display = 'none';
+                        }
+                    }
+                }
+            }
 
             function resetInactivityTimer() {
                 clearTimeout(inactivityTimer);
@@ -71,7 +141,6 @@
                 clearInterval(countdownTimer);
                 
                 document.getElementById('inactivityModal').style.display = 'none';
-                
                 countdownSeconds = 120;
                 
                 inactivityTimer = setTimeout(() => {
@@ -81,11 +150,9 @@
 
             function showInactivityWarning() {
                 document.getElementById('inactivityModal').style.display = 'block';
-                
                 countdownSeconds = 120;
                 updateCountdown();
                 countdownTimer = setInterval(updateCountdown, 1000);
-                
                 warningTimer = setTimeout(() => {
                     performLogout(true); 
                 }, WARNING_TIME);
@@ -95,14 +162,12 @@
                 const minutes = Math.floor(countdownSeconds / 60);
                 const seconds = countdownSeconds % 60;
                 const display = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-                
                 document.getElementById('countdown').textContent = display;
                 
                 if (countdownSeconds <= 0) {
                     performLogout(true);
                     return;
                 }
-                
                 countdownSeconds--;
             }
 
@@ -111,7 +176,6 @@
                 clearTimeout(warningTimer);
                 clearInterval(countdownTimer);
                 resetInactivityTimer();
-                
             }
 
             function setupActivityListeners() {
@@ -120,16 +184,16 @@
                 });
             }
 
-            function logout() {
+            async function logout() {
                 if (isLoggingOut) return;
                 
                 const confirmLogout = confirm('¿Estás seguro de que deseas cerrar sesión?');
                 if (confirmLogout) {
-                    performLogout();
+                    await performLogout();
                 }
             }
 
-            function performLogout(isAutomatic = false) {
+            async function performLogout(isAutomatic = false) {
                 if (isLoggingOut) return;
                 
                 isLoggingOut = true;
@@ -147,7 +211,23 @@
                     logoutBtn.style.pointerEvents = 'none';
                     logoutBtn.textContent = isAutomatic ? 'Sesión expirada...' : 'Cerrando sesión...';
                 }
+                
                 if (typeof(Storage) !== "undefined") {
+                    const token = localStorage.getItem('access_token');
+                    
+                    if (token) {
+                        try {
+                            const response = await fetch('/logout', {
+                                method: 'GET',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`
+                                }
+                            });
+                        } catch (error) {
+                            console.error('Error during logout:', error);
+                        }
+                    }
+                    
                     localStorage.clear();
                     sessionStorage.clear();
                 }
@@ -155,8 +235,56 @@
                 if (isAutomatic) {
                     alert('Tu sesión ha expirado por inactividad. Serás redirigido al login.');
                 }
-                window.location.replace('/logout');
+                
+                setTimeout(() => {
+                    window.location.replace('/login');
+                }, 1000);
             }
+
+            window.addEventListener('load', async function() {
+                if (!checkAuthentication()) {
+                    setTimeout(() => {
+                        window.location.replace('/login');
+                    }, 3000);
+                    return;
+                }
+                
+                try {
+                    const response = await makeAuthenticatedRequest('/verify-auth');
+                    
+                    if (response.ok) {
+                        const userData = await response.json();
+                        updateUserInfo(userData);
+                        setupActivityListeners();
+                        resetInactivityTimer();
+                        return;
+                    }
+                } catch (error) {
+                    console.warn('verify-auth failed:', error);
+                }
+                
+                try {
+                    const response = await makeAuthenticatedRequest('/dashboard');
+                    
+                    if (response.ok) {
+                        const contentType = response.headers.get('content-type');
+                        
+                        if (contentType && contentType.includes('application/json')) {
+                            const userData = await response.json();
+                            updateUserInfo(userData);
+                            setupActivityListeners();
+                            resetInactivityTimer();
+                            return;
+                        }
+                    }
+                } catch (error) {
+                    console.warn('dashboard request failed:', error);
+                }
+                
+                setTimeout(() => {
+                    window.location.replace('/login');
+                }, 5000);
+            });
 
             window.addEventListener('pageshow', function(event) {
                 if (event.persisted) {
@@ -164,13 +292,29 @@
                 }
             });
 
-            window.addEventListener('load', function() {
-                setupActivityListeners();
-                resetInactivityTimer();
+            window.addEventListener('popstate', function(event) {
+                if (!isLoggingOut) {
+                    const currentPath = window.location.pathname;
+                    
+                    if (currentPath === '/login' || currentPath === '/' || !currentPath.startsWith('/dashboard')) {
+                        localStorage.clear();
+                        sessionStorage.clear();
+                        window.location.replace('/login');
+                    }
+                }
             });
 
             window.addEventListener('beforeunload', function(event) {
                 if (!isLoggingOut) {
+                    const destination = event.target.activeElement;
+                    
+                    if (destination && destination.tagName === 'A') {
+                        const href = destination.href;
+                        if (href && (href.includes('/register') || href.includes('/users') || href.includes('/departments'))) {
+                            return; 
+                        }
+                    }
+                    
                     event.preventDefault();
                     return event.returnValue = '¿Estás seguro de que deseas salir?';
                 }
