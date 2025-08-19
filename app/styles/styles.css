@@ -1,0 +1,157 @@
+/* Estilos generales */
+body {
+    font-family: Inter, Arial;
+    background: #030617;
+    color: #dbeafe;
+    margin: 0;
+    padding: 0;
+}
+
+/* Estilos para páginas de login y register */
+body.auth-page {
+    display: flex;
+    min-height: 100vh;
+    align-items: center;
+    justify-content: center;
+    background: #07123a;
+    color: #e6eef8;
+}
+
+/* Estilos para la página del dashboard */
+body.dashboard-page {
+    padding: 28px;
+}
+
+/* Card para login y register */
+.card {
+    background: #111827;
+    padding: 28px;
+    border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.5);
+    width: 360px;
+}
+
+/* Box para dashboard */
+.box {
+    background: #07132b;
+    padding: 24px;
+    border-radius: 10px;
+    max-width: 800px;
+    margin: 40px auto;
+}
+
+/* Inputs para formularios */
+input {
+    width: 94%;
+    padding: 10px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border: 1px solid #374151;
+    background: #0b1220;
+    color: #e6eef8;
+}
+
+/* Botones */
+button {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 6px;
+    margin-top: 8px;
+    background: #7c3aed;
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+button:hover {
+    background: #6d28d9;
+}
+
+/* Mensajes de error */
+.error {
+    background: #7f1d1d;
+    padding: 8px;
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+/* Enlaces generales */
+a {
+    color: #93c5fd;
+    text-decoration: none;
+}
+
+/* Enlaces del dashboard */
+.actions a {
+    display: inline-block;
+    padding: 8px 16px;
+    background: #1e293b;
+    border-radius: 6px;
+    margin: 4px;
+    transition: all 0.2s;
+}
+
+.actions a:hover {
+    background: #334155;
+    transform: translateY(-1px);
+}
+
+/* Párrafos */
+p {
+    margin-top: 10px;
+}
+
+/* Select personalizado */
+#rol {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #374151;
+    background: #0b1220;
+    color: #6f6f70;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+/* Estilos específicos del dashboard */
+.admin-only {
+    border-left: 3px solid #f59e0b;
+    padding-left: 16px;
+    margin-top: 20px;
+    background: #0f172a;
+}
+
+.user-info {
+    background: #1e293b;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.role-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.role-admin {
+    background: #dc2626;
+    color: white;
+}
+
+.role-user {
+    background: #059669;
+    color: white;
+}

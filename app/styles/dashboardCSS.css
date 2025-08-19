@@ -1,0 +1,110 @@
+body {
+    font-family: Inter, Arial;
+    background:#030617;color:#dbeafe;
+    padding:28px
+}
+        
+.box {
+    background:#07132b;
+    padding:24px;
+    border-radius:10px;
+    max-width:800px;
+    margin:40px auto
+}
+        
+a {
+    color:#93c5fd;
+    text-decoration:none;
+    display:inline-block;
+    padding:8px 16px;
+    background:#1e293b;
+    border-radius:6px;
+    margin:4px;
+    transition:all 0.2s
+}
+        
+a:hover {
+    background:#334155;
+    transform:translateY(-1px)
+}
+        
+.admin-only {
+    border-left:3px solid #f59e0b;
+    padding-left:16px;
+    margin-top:20px;
+    background:#0f172a
+}
+        
+.user-info {
+    background:#1e293b;
+    padding:16px;
+    border-radius:8px;
+    margin-bottom:20px
+}
+        
+.actions {
+    display:flex;
+    flex-wrap:wrap;
+    gap:8px
+}
+        
+.role-badge {
+    display:inline-block;
+    padding:4px 12px;
+    border-radius:20px;
+    font-size:12px;
+    font-weight:bold
+}
+        
+.role-admin {
+    background:#dc2626;
+    color:white
+}
+        
+.role-user {
+    background:#059669;
+    color:white
+}
+
+.inactivity-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.7);
+}
+.inactivity-content {
+    background-color: #fefefe;
+    margin: 15% auto;
+    padding: 30px;
+    border: 1px solid #888;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 500px;
+    text-align: center;
+}
+.countdown {
+    font-size: 2em;
+    color: #dc3545;
+    font-weight: bold;
+    margin: 20px 0;
+}
+.modal-buttons button {
+    margin: 10px;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+.btn-extend {
+    background-color: #28a745;
+    color: white;
+}
+.btn-logout {
+    background-color: #dc3545;
+    color: white;
+}
