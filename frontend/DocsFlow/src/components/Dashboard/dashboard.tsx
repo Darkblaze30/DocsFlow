@@ -1,73 +1,58 @@
 // src/components/Dashboard/Dashboard.tsx
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useInactivity } from '../../hooks/useInactivity';
+import { getDashboardData } from '../../services/authService';
 import InactivityModal from '../InactivityModal/inactivityModal';
+import { Link, Navigate } from 'react-router-dom';
 import type { User } from '../../types/auth';
 import './dashboard.css';
 
 const Dashboard: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const { logout } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { logout, checkAuth, verifyToken } = useAuth();
   const { showModal, countdown, extendSession, isLoggingOut } = useInactivity();
 
-  const loadUserData = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        window.location.replace('/login');
-        return;
-      }
-
-      // Intentar verify-auth primero
-      let response = await fetch('/verify-auth', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-        setLoading(false);
-        return;
-      }
-
-      // Fallback a dashboard
-      response = await fetch('/dashboard', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-
-      if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType?.includes('application/json')) {
-          const data = await response.json();
-          setUser(data.user);
-        } else {
-          // Si es HTML, extraer datos del template
-          setUser(null); // Manejar según tu lógica
-        }
-      } else {
-        throw new Error('Authentication failed');
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      setTimeout(() => window.location.replace('/login'), 3000);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
+    const loadUserData = async () => {
+      try {
+        // Verificar autenticación primero
+        if (!checkAuth()) {
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+
+        const tokenValid = await verifyToken();
+        if (!tokenValid) {
+          setIsAuthenticated(false);
+          setLoading(false);
+          return;
+        }
+
+        const dashboardData = await getDashboardData();
+        setUser(dashboardData.user);
+        setIsAuthenticated(true);
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     loadUserData();
-  }, [loadUserData]);
+  }, [checkAuth, verifyToken]);
 
   const handleLogout = async () => {
-    const confirmLogout = confirm('¿Estás seguro de que deseas cerrar sesión?');
-    if (confirmLogout) {
+    if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
       await logout();
     }
   };
 
+  // Mostrar loading
   if (loading) {
     return (
       <div className="box">
@@ -80,56 +65,59 @@ const Dashboard: React.FC = () => {
     );
   }
 
+  // Redirigir al login si no está autenticado
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
   return (
     <>
       <div className="box">
         <h1>
-          Bienvenido, <span id="userName">{user?.name || 'Sin nombre'}</span> 🌟
+          Bienvenido, <span>{user?.name || 'Sin nombre'}</span> 🌟
         </h1>
-        
+
         <div className="user-info">
           <p>
-            <strong>Correo:</strong> 
-            <span id="userEmail">{user?.email || 'Sin email'}</span>
+            <strong>Correo:</strong>
+            <span>{user?.email || 'Sin email'}</span>
           </p>
           <p>
             <strong>Rol:</strong>
-            <span className={`role-badge role-${user?.rol || 'user'}`} id="userRoleSpan">
-              <span id="userRoleText">{(user?.rol || 'user').toUpperCase()}</span>
+            <span className={`role-badge role-${user?.rol || 'user'}`}>
+              {(user?.rol || 'user').toUpperCase()}
             </span>
           </p>
         </div>
 
         <div className="actions">
-          <a 
-            href="#" 
-            onClick={handleLogout} 
-            id="logout-btn"
-            style={{ 
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            style={{
               pointerEvents: isLoggingOut ? 'none' : 'auto'
             }}
           >
             {isLoggingOut ? 'Cerrando sesión...' : 'Cerrar sesión'}
-          </a>
+          </button>
         </div>
 
         {user?.rol === 'admin' && (
-          <div id="adminPanel" className="admin-visible">
+          <div className="admin-visible">
             <h3>🔧 Panel de Administrador</h3>
             <div className="actions">
-              <a href="/register">👤 Registrar Usuarios</a>
-              <a href="/users">📋 Ver Todos los Usuarios</a>
-              <a href="/departments">🏢 Gestionar Departamentos</a>
+              <Link to="/register">👤 Registrar Usuarios</Link>
+              <Link to="/users">📋 Ver Todos los Usuarios</Link>
             </div>
           </div>
         )}
       </div>
 
-      <InactivityModal 
+      <InactivityModal
         show={showModal}
         countdown={countdown}
         onExtend={extendSession}
-        onLogout={() => logout(true)}
+        onLogout={logout}
       />
     </>
   );

@@ -36,3 +36,11 @@ export interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
 }
+export interface DashboardResponse {
+  user: User;
+}
+
+export interface RegisterFormDataResponse {
+  departments: Department[];
+  available_roles: string[];
+}

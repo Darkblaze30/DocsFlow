@@ -1,6 +1,6 @@
 // src/components/Login/Login.tsx
 import React, { useState } from 'react';
-import { loginUser, verifyToken } from '../../services/authService';
+import { loginUser } from '../../services/authService';
 import type { LoginFormData } from '../../types/auth';
 import './login.css';
 
@@ -26,29 +26,21 @@ const Login: React.FC = () => {
     setError('');
 
     try {
-      const loginResponse = await loginUser(formData);
+      // loginUser ya guarda el token automáticamente en localStorage
+      await loginUser(formData);
       
-      if (loginResponse.access_token) {
-        // Guardar token en localStorage
-        localStorage.setItem('access_token', loginResponse.access_token);
-        
-        // Verificar token
-        const isValid = await verifyToken(loginResponse.access_token);
-        
-        if (isValid) {
-          console.log('Token verification successful');
-          window.location.href = loginResponse.redirect_url;
-        } else {
-          setError('Error de autenticación del token');
-        }
-      }
+      // Redirigir directamente al dashboard
+      window.location.href = '/dashboard';
+      
     } catch (err: unknown) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError('Error de conexión');
-        }
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Error de conexión');
       }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
