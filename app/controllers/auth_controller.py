@@ -1,18 +1,20 @@
 from app.models.password_reset import PasswordResetRequest, PasswordResetConfirm, User
-from app.utils.email_utils import send_password_reset_email
+from app.utils.email_utils import send_password_reset_email,send_account_locked_email_to_admin
 from app.utils.db_operations import execute_query
 import uuid
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
-
+from fastapi import HTTPException
 
 def get_user_by_email(email: str) -> Optional[User]:
-    """Busca un usuario por su email en la base de datos, incluyendo su rol."""
-    # Corrige la consulta SELECT para que incluya la columna 'role'
-    query = "SELECT id, email, password, rol FROM users WHERE email = %s"
+    query = "SELECT id, email, password, rol, failed_attempts, is_locked FROM users WHERE email = %s"
     user_data = execute_query(query, (email,), fetch_one=True)
+    return User(**user_data) if user_data else None
 
+def get_user_by_id(user_id: int) -> Optional[User]:
+    query = "SELECT id, email, password, rol, failed_attempts, is_locked FROM users WHERE id = %s"
+    user_data = execute_query(query, (user_id,), fetch_one=True)
     return User(**user_data) if user_data else None
 
 def update_user_password(user_id: int, new_password_hash: str):
@@ -27,16 +29,14 @@ def save_reset_token(user_id: int, token: str):
     execute_query(query, (user_id, hashed_token, expires_at))
 
 def get_reset_token_record(token: str):
-    # Primero obtienes todos los registros (o filtras por usuario si lo tienes)
     query = "SELECT user_id, expires_at, token_hash FROM password_resets"
     records = execute_query(query, fetch_all=True)
 
-    # Luego comparas cada hash con el token
     for record in records:
         if bcrypt.checkpw(token.encode('utf-8'), record['token_hash'].encode('utf-8')):
             return record
 
-    return None  # Si no hay coincidencia
+    return None 
 
 
 def delete_reset_token_record(token_hash: str):
@@ -89,3 +89,54 @@ async def reset_password_handler(request: PasswordResetConfirm):
     delete_reset_token_record(token_record['token_hash'])
 
     return {"message": "Contraseña actualizada con éxito."}
+
+
+async def login_for_access_token_handler(email: str, password: str):
+    user = get_user_by_email(email)
+
+    if not user:
+        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
+
+    if user.is_locked:
+        raise HTTPException(status_code=403, detail="Tu cuenta está bloqueada debido a demasiados intentos fallidos. Un administrador ha sido notificado.")
+
+    if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        new_attempts = user.failed_attempts + 1
+        query = "UPDATE users SET failed_attempts = %s WHERE id = %s"
+        execute_query(query, (new_attempts, user.id))
+
+        if new_attempts >= 5:
+            query = "UPDATE users SET is_locked = TRUE WHERE id = %s"
+            execute_query(query, (user.id,))
+            
+            await send_account_locked_email_to_admin(user.email, str(user.id))
+            
+            raise HTTPException(
+                status_code=403,
+                detail="Demasiados intentos de login fallidos. La cuenta ha sido bloqueada. Un administrador ha sido notificado."
+            )
+        raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
+
+    if user.failed_attempts > 0:
+        query = "UPDATE users SET failed_attempts = 0 WHERE id = %s"
+        execute_query(query, (user.id,))
+
+    return {"message": "Login exitoso.."} # Placeholder
+
+
+def unlock_account_handler(token: str):
+    try:
+        user_id = int(token)
+    except (ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Token de desbloqueo inválido.")
+
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+    if user.is_locked:
+        query = "UPDATE users SET is_locked = FALSE, failed_attempts = 0 WHERE id = %s"
+        execute_query(query, (user_id,))
+        return {"message": f"Cuenta de {user.email} desbloqueada con éxito."}
+    else:
+        return {"message": "La cuenta no estaba bloqueada."}
