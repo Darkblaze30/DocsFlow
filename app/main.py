@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI , Query
 from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from app.routes.userRouters import auth_router
@@ -8,6 +8,7 @@ from app.utils.db_connection import close_pool
 import app.models.userModels as models_module
 from app.routes.document_route import router as document_router
 from app.routes.auth import router as auth_router_email
+from app.controllers.auth_controller import unlock_account_handler
 app = FastAPI()
 
 origins = [
@@ -41,6 +42,11 @@ app.include_router(document_router, prefix="/api/documents")
 app.include_router(auth_router_email, prefix="/api")
 
 app.mount("/styles", StaticFiles(directory="app/styles"), name="styles")
+
+@auth_router_email.get("/unlock-account", status_code=200)
+def unlock_account(token: str = Query(...)):
+    """Endpoint para que un administrador desbloquee una cuenta de usuario."""
+    return unlock_account_handler(token)
 
 @app.on_event("shutdown")
 def shutdown():
