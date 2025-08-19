@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.openapi.utils import get_openapi
+from fastapi.middleware.cors import CORSMiddleware
 from app.routes.userRouters import auth_router
 from fastapi.staticfiles import StaticFiles
 from app.utils.db_operations import execute
@@ -8,6 +9,20 @@ import app.models.userModels as models_module
 from app.routes.document_route import router as document_router
 from app.routes.auth import router as auth_router_email
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",  # Vite por defecto
+    "http://127.0.0.1:5173",  # Alternativa local
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,         
+    allow_credentials=True,
+    allow_methods=["*"],               
+    allow_headers=["*"],               
+)
+
 
 @app.on_event("startup")
 def startup():
@@ -21,9 +36,9 @@ def startup():
         print("✅ Intento de creación de tablas completado.")
     except Exception as e:
         print("❌ No se pudieron ejecutar los DDLs de creación de tablas. Revisa la conexión a la BD:", e)
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api")
 app.include_router(document_router, prefix="/api/documents")
-app.include_router(auth_router_email)
+app.include_router(auth_router_email, prefix="/api")
 
 app.mount("/styles", StaticFiles(directory="app/styles"), name="styles")
 
