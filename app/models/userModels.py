@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS documents (
     id INT AUTO_INCREMENT PRIMARY KEY,
     filename VARCHAR(255),
     uploaded_by INT,
-    department VARCHAR(100),
+    department INT,
     upload_date DATETIME
 );
 

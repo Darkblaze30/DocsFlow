@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.openapi.utils import get_openapi
 from app.routes.userRouters import auth_router
 from fastapi.staticfiles import StaticFiles
 from app.utils.db_operations import execute
@@ -33,3 +34,31 @@ def shutdown():
         print("🧹 Pool de conexiones cerrado correctamente.")
     except Exception:
         pass
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+
+    openapi_schema = get_openapi(
+        title="Document API",
+        version="1.0.0",
+        description="API para gestión de documentos protegida con JWT",
+        routes=app.routes,
+    )
+
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT"
+        }
+    }
+
+    for path in openapi_schema["paths"].values():
+        for method in path.values():
+            method["security"] = [{"BearerAuth": []}]
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
