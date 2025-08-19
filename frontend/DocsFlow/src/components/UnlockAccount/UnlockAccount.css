@@ -1,0 +1,23 @@
+.unlock-container {
+  @apply flex items-center justify-center min-h-screen p-4 bg-purple-50;
+}
+
+.unlock-card {
+  @apply bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center;
+}
+
+.unlock-title {
+  @apply text-3xl font-bold text-gray-800 mb-4;
+}
+
+.unlock-subtitle {
+  @apply text-gray-600 mb-6;
+}
+
+.unlock-message {
+  @apply mt-6 p-3 rounded-lg text-sm font-medium bg-purple-100 text-purple-700;
+}
+
+.unlock-button {
+  @apply w-full mt-6 py-2 px-4 rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50;
+}
