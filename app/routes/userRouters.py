@@ -1,17 +1,15 @@
 # Importación de módulos necesarios para rutas, formularios, respuestas y autenticación
-from fastapi import APIRouter, Request, Depends, Form, Response, HTTPException
-from fastapi.responses import RedirectResponse
+from fastapi import APIRouter, Request, Depends, Form, Response, HTTPException, status
 from fastapi.templating import Jinja2Templates
 from app.utils.db_operations import fetch_all
 from app.controllers.userControllers import (
     register_user, authenticate_user, create_access_token,
-    get_current_user, revoke_token, get_current_admin_user
+    get_current_user, get_current_admin_user
 )
 from datetime import timedelta
 
 # Inicialización del router y sistema de plantillas HTML
-auth_router = APIRouter()
-templates = Jinja2Templates(directory="app/templates")
+auth_router = APIRouter(tags=['auth'])
 
 # Función auxiliar para obtener la lista de departamentos desde la base de datos
 def _get_departments_list():
@@ -28,43 +26,9 @@ def _set_security_headers(response: Response):
     response.headers["Expires"] = "0"
     return response
 
-# Página de registro (GET) — protegida, solo accesible por administradores autenticados
-@auth_router.get("/register")
-def register_page(request: Request):
-    user_data = None
-    try:
-        authorization = request.headers.get("Authorization")
-        if authorization and authorization.startswith("Bearer "):
-            current_user = get_current_user(request)
-            user_data = current_user
-    except HTTPException:
-        pass
-
-    # Si no es admin, se muestra acceso limitado
-    if not user_data or user_data.get("rol") != "admin":
-        user_data = {
-            "name": "Sin acceso",
-            "email": "...",
-            "rol": "user"
-        }
-
-    # Carga de roles y departamentos para el formulario
-    from app.models.userModels import RoleEnum
-    roles = [role.value for role in RoleEnum]
-    departments = _get_departments_list()
-
-    response = templates.TemplateResponse("register.html", {
-        "request": request,
-        "roles": roles,
-        "departments": departments,
-        "user": user_data
-    })
-    return _set_security_headers(response)
-
 # Registro de usuario (POST) — protegido, solo administradores pueden registrar nuevos usuarios
 @auth_router.post("/register")
 def register(
-    request: Request,
     name: str = Form(...),
     email: str = Form(...),
     password: str = Form(...),
@@ -74,24 +38,13 @@ def register(
 ):
     try:
         user = register_user(name, email, password, rol, department_name)
+        return {"message": "Usuario registrado exitosamente", "user": user}
     except Exception as e:
-        from app.models.userModels import RoleEnum
-        roles = [role.value for role in RoleEnum]
-        departments = _get_departments_list()
-        response = templates.TemplateResponse("register.html", {
-            "request": request,
-            "error": str(e),
-            "roles": roles,
-            "departments": departments,
-            "form": {"name": name, "email": email, "department_name": department_name}
-        })
-        return _set_security_headers(response)
-    return {"new user": user}
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
-# Página de login (GET) — pública, accesible sin autenticación
-@auth_router.get("/login")
-def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
 
 # Autenticación de usuario (POST) — pública, genera token JWT si las credenciales son válidas
 @auth_router.post("/login")
@@ -108,53 +61,6 @@ def login(response: Response, request: Request, email: str = Form(...), password
         "access_token": access_token,
         "token_type": "bearer",
     }
-
-# Página de dashboard (GET) — protegida, requiere token JWT en el header
-@auth_router.get("/dashboard")
-def dashboard(request: Request):
-    user_data = None
-    try:
-        authorization = request.headers.get("Authorization")
-        if authorization and authorization.startswith("Bearer "):
-            current_user = get_current_user(request)
-            user_data = current_user
-    except HTTPException:
-        pass
-
-    if not user_data:
-        user_data = {
-            "name": "Cargando...",
-            "email": "...",
-            "rol": "user"
-        }
-
-    response = templates.TemplateResponse("dashboard.html", {
-        "request": request,
-        "user": user_data
-    })
-    return _set_security_headers(response)
-
-# Logout (GET) — protegida, invalida el token JWT si está presente
-@auth_router.get("/logout")
-def logout(request: Request, response: Response):
-    authorization = request.headers.get("Authorization")
-    token = authorization.replace("Bearer ", "") if authorization and authorization.startswith("Bearer ") else None
-    if token:
-        revoke_token(token)
-
-    return {"message": "Logged out successfully", "redirect_url": "/login"}
-
-# Página de usuarios (GET) — protegida, solo accesible por administradores
-@auth_router.get("/users")
-def users_list(request: Request, current_admin=Depends(get_current_admin_user)):
-    response = templates.TemplateResponse("users.html", {"request": request})
-    return _set_security_headers(response)
-
-# Página de departamentos (GET) — protegida, solo accesible por administradores
-@auth_router.get("/departments")
-def departments_list(request: Request, current_admin=Depends(get_current_admin_user)):
-    response = templates.TemplateResponse("departments.html", {"request": request})
-    return _set_security_headers(response)
 
 # Verificación de autenticación (GET) — protegida, retorna datos del usuario autenticado
 @auth_router.get("/verify-auth")
