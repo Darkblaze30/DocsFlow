@@ -97,23 +97,18 @@ async def login_for_access_token_handler(email: str, password: str):
     if not user:
         raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
 
-    # Verifica si la cuenta está bloqueada
     if user.is_locked:
         raise HTTPException(status_code=403, detail="Tu cuenta está bloqueada debido a demasiados intentos fallidos. Un administrador ha sido notificado.")
 
-    # Verifica si la contraseña es correcta
     if not bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
-        # Contraseña incorrecta, incrementa el contador de intentos
         new_attempts = user.failed_attempts + 1
         query = "UPDATE users SET failed_attempts = %s WHERE id = %s"
         execute_query(query, (new_attempts, user.id))
 
         if new_attempts >= 5:
-            # Bloquea la cuenta
             query = "UPDATE users SET is_locked = TRUE WHERE id = %s"
             execute_query(query, (user.id,))
             
-            # Envía un correo al administrador con un token de desbloqueo (el ID del usuario)
             await send_account_locked_email_to_admin(user.email, str(user.id))
             
             raise HTTPException(
@@ -122,13 +117,10 @@ async def login_for_access_token_handler(email: str, password: str):
             )
         raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos")
 
-    # Si la contraseña es correcta, reinicia los intentos fallidos
     if user.failed_attempts > 0:
         query = "UPDATE users SET failed_attempts = 0 WHERE id = %s"
         execute_query(query, (user.id,))
 
-    # Aquí iría la lógica para generar el JWT, que ya tienes
-    # ...
     return {"message": "Login exitoso.."} # Placeholder
 
 
@@ -142,7 +134,6 @@ def unlock_account_handler(token: str):
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
-    # Si la cuenta está bloqueada, la desbloquea y reinicia los intentos
     if user.is_locked:
         query = "UPDATE users SET is_locked = FALSE, failed_attempts = 0 WHERE id = %s"
         execute_query(query, (user_id,))
